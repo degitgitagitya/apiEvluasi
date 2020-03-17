@@ -21,9 +21,8 @@ ma = Marshmallow(app)
 # Init cors
 CORS(app)
 
+
 # Siswa Model
-
-
 class Siswa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     id_kelas = db.Column(db.Integer)
@@ -39,9 +38,8 @@ class Siswa(db.Model):
         self.jenis_kelamin = jenis_kelamin
         self.password = password
 
+
 # Siswa Schema
-
-
 class SiswaSchema(ma.Schema):
     class Meta:
         fields = ('id', 'id_kelas', 'nis', 'nama', 'jenis_kelamin', 'password')
@@ -55,6 +53,14 @@ siswas_schema = SiswaSchema(many=True)
 @app.route('/siswa', methods=['GET'])
 def get_all_siswa():
     all_siswa = Siswa.query.all()
+    result = siswas_schema.dump(all_siswa)
+
+    return jsonify(result)
+
+# Get All Siswa by id_kelas
+@app.route('/siswa/kelas/<id>', methods=['GET'])
+def get_all_siswa_by_kelas(id):
+    all_siswa = Siswa.query.filter_by(id_kelas=id)
     result = siswas_schema.dump(all_siswa)
 
     return jsonify(result)
@@ -98,9 +104,8 @@ def update_siswa(id):
 
     return siswa_schema.jsonify(siswa)
 
+
 # Model Guru
-
-
 class Guru(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nip = db.Column(db.String(100), unique=True)
@@ -112,9 +117,8 @@ class Guru(db.Model):
         self.nama = nama
         self.password = password
 
+
 # Guru Schema
-
-
 class GuruSchema(ma.Schema):
     class Meta:
         fields = ('id', 'nip', 'nama', 'password')
@@ -122,7 +126,7 @@ class GuruSchema(ma.Schema):
 
 # Init Guru Schema
 guru_schema = GuruSchema()
-gurus_schema = GuruSchema(many=true)
+gurus_schema = GuruSchema(many=True)
 
 # Get All Guru
 @app.route('/guru', methods=['GET'])
@@ -183,6 +187,77 @@ def update_guru(id):
     db.session.commit()
 
     return guru_schema.jsonify(guru)
+
+
+# Kelas Model
+class Kelas(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    id_guru = db.Column(db.Integer)
+    nama = db.Column(db.String(100))
+
+    def __init__(self, id_guru, nama):
+        self.id_guru = id_guru
+        self.nama = nama
+
+
+# Kelas Schema
+class KelasSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'id_guru', 'nama')
+
+
+# Init Kelas Schema
+kelas_schema = KelasSchema()
+kelases_schema = KelasSchema(many=True)
+
+# Get All Kelas
+@app.route('/kelas', methods=['GET'])
+def get_kelases():
+    all_kelas = Kelas.query.all()
+    result = kelases_schema.dump(all_kelas)
+
+    return jsonify(result)
+
+# Get All Kelas By id_guru
+@app.route('/kelas/<id_guru>', methods=['GET'])
+def get_kelases_by_guru(id_guru):
+    all_kelas = Kelas.query.filter_by(id_guru=id_guru)
+    result = kelases_schema.dump(all_kelas)
+
+    return jsonify(result)
+
+# Create a Kelas
+@app.route('/kelas', methods=['POST'])
+def add_kelas():
+    id_guru = request.json['id_guru']
+    nama = request.json['nama']
+
+    new_kelas = Kelas(id_guru, nama)
+    db.session.add(new_kelas)
+    db.session.commit()
+
+    return kelas_schema.jsonify(new_kelas)
+
+# Delete a Kelas
+@app.route('/kelas/<id>', methods=['DELETE'])
+def delete_kelas(id):
+    kelas = Kelas.query.get(id)
+    db.session.delete(kelas)
+    db.session.commit()
+
+    return kelas_schema.jsonify(kelas)
+
+# Edit Kelas
+@app.route('/kelas/<id>', methods=['PUT'])
+def update_kelas(id):
+    kelas = Kelas.query.get(id)
+
+    kelas.id_guru = request.json['id_guru']
+    kelas.nama = request.json['nama']
+
+    db.session.commit()
+
+    return kelas_schema.jsonify(kelas)
 
 
 # Run Server
