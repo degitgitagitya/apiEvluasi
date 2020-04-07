@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask_cors import CORS
 import os
+import secrets
 
 # init app
 app = Flask(__name__)
@@ -57,6 +58,16 @@ siswas_schema = SiswaSchema(many=True)
 def get_all_siswa():
     all_siswa = Siswa.query.all()
     result = siswas_schema.dump(all_siswa)
+
+    return jsonify(result)
+
+# Auth Siswa
+@app.route('/auth/siswa', methods=['POST'])
+def auth_siswa():
+    nis = request.json['nis']
+    password = request.json['password']
+    siswa = Siswa.query.filter_by(nis=nis, password=password).first()
+    result = siswa_schema.dump(siswa)
 
     return jsonify(result)
 
@@ -270,9 +281,7 @@ def update_kelas(id):
 class Test(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     pertanyaan = db.Column(db.String(100))
-
-    def __init__(self, pertanyaan):
-        self.pertanyaan = pertanyaan
+    pilihan = db.relationship('PilihanTest', backref='test', lazy=True)
 
 
 # Pre Test Schema
@@ -284,6 +293,32 @@ class TestSchema(ma.Schema):
 # Init Test Schema
 test_schema = TestSchema()
 tests_schema = TestSchema(many=True)
+
+
+# Schema Pilihan
+class PilihanTestSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'id_test', 'pilihan', 'is_right')
+
+
+# Schema Test Custom
+class TestSchemaCustom(ma.Schema):
+    class Meta:
+        model = Test
+        fields = ('id', 'pertanyaan', 'pilihan')
+    pilihan = ma.Nested(PilihanTestSchema(many=True))
+
+
+custom_test_schema = TestSchemaCustom()
+many_custom_test_schema = TestSchemaCustom(many=True)
+
+# Get All Test with Jawaban
+@app.route('/alltest', methods=['GET'])
+def get_all_test_with_option():
+    all_test = Test.query.all()
+    result = many_custom_test_schema.dump(all_test)
+
+    return jsonify(result)
 
 # Get All Test
 @app.route('/test', methods=['GET'])
@@ -298,7 +333,7 @@ def get_all_test():
 def add_test():
     pertanyaan = request.json['pertanyaan']
 
-    new_test = Test(pertanyaan)
+    new_test = Test(pertanyaan=pertanyaan)
     db.session.add(new_test)
     db.session.commit()
 
@@ -328,7 +363,7 @@ def update_test(id):
 # Model Pilihan Test
 class PilihanTest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    id_test = db.Column(db.Integer)
+    id_test = db.Column(db.Integer, db.ForeignKey('test.id'), nullable=False)
     pilihan = db.Column(db.String(100))
     is_right = db.Column(db.Integer)
 
@@ -336,12 +371,6 @@ class PilihanTest(db.Model):
         self.id_test = id_test
         self.pilihan = pilihan
         self.is_right = is_right
-
-
-# Schema Pilihan
-class PilihanTestSchema(ma.Schema):
-    class Meta:
-        fields = ('id', 'id_test', 'pilihan', 'is_right')
 
 
 # Init pilihan schema
@@ -398,6 +427,54 @@ def edit_pilihan_test(id):
     db.session.commit()
 
     return pilihan_test_schema.jsonify(pilihan_test)
+
+# Model Token
+
+
+class Token(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(100))
+
+    def __init__(self, token):
+        self.token = token
+
+# schema Token
+
+
+class TokenSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'token')
+
+
+# Init Schema Token
+token_schema = TokenSchema()
+
+# Get a Token
+@app.route('/token/<id>', methods=['GET'])
+def get_a_token(id):
+    token = Token.query.get(id)
+    result = token_schema.dump(token)
+
+    return token_schema.jsonify(token)
+
+# Update Token
+@app.route('/token/<id>', methods=['PUT'])
+def update_token(id):
+    token = Token.query.get(id)
+    token.token = secrets.token_hex(3)
+
+    db.session.commit()
+
+    return token_schema.jsonify(token)
+
+# Auth Token
+@app.route('/token/<id>', methods=['POST'])
+def auth_token(id):
+    temp = request.json['token']
+    token = Token.query.filter_by(id=id, token=temp).first()
+    result = token_schema.dump(token)
+
+    return jsonify(result)
 
 
 # Run Server
