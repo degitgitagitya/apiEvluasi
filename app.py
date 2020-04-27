@@ -235,6 +235,13 @@ def get_kelases():
 
     return jsonify(result)
 
+# Get a Kelas
+@app.route('/kelas/id/<id>', methods=['GET'])
+def get_kelas_by_id(id):
+    kelas = Kelas.query.get(id)
+
+    return kelas_schema.jsonify(kelas)
+
 # Get All Kelas By id_guru
 @app.route('/kelas/<id_guru>', methods=['GET'])
 def get_kelases_by_guru(id_guru):
@@ -428,9 +435,8 @@ def edit_pilihan_test(id):
 
     return pilihan_test_schema.jsonify(pilihan_test)
 
+
 # Model Token
-
-
 class Token(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String(100))
@@ -438,9 +444,8 @@ class Token(db.Model):
     def __init__(self, token):
         self.token = token
 
+
 # schema Token
-
-
 class TokenSchema(ma.Schema):
     class Meta:
         fields = ('id', 'token')
@@ -475,6 +480,90 @@ def auth_token(id):
     result = token_schema.dump(token)
 
     return jsonify(result)
+
+
+# Model Ujian
+class Ujian(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    id_kelas = db.Column(db.Integer)
+    id_bank_soal = db.Column(db.Integer)
+    mata_pelajaran = db.Column(db.String(100))
+    status = db.Column(db.Integer)
+    tanggal_tes = db.Column(db.String(100))
+
+    def __init__(self, id_kelas, id_bank_soal, mata_pelajaran, status, tanggal_tes):
+        self.id_kelas = id_kelas
+        self.id_bank_soal = id_bank_soal
+        self.mata_pelajaran = mata_pelajaran
+        self.status = status
+        self.tanggal_tes = tanggal_tes
+
+
+# Ujian Schema
+class UjianSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'id_kelas', 'id_bank_soal',
+                  'mata_pelajaran', 'status', 'tanggal_tes')
+
+
+# Init Ujian Schema
+ujian_schema = UjianSchema()
+many_ujian_schema = UjianSchema(many=True)
+
+# Get All Ujian
+@app.route('/ujian', methods=['GET'])
+def get_ujian():
+    all_ujian = Ujian.query.all()
+    result = many_ujian_schema.dump(all_ujian)
+
+    return jsonify(result)
+
+# Get a Ujian
+@app.route('/ujian/<id>', methods=['GET'])
+def get_one_ujian(id):
+    ujian = Ujian.query.get(id)
+
+    return ujian_schema.jsonify(ujian)
+
+# Create a Ujian
+@app.route('/ujian', methods=['POST'])
+def add_ujian():
+    id_kelas = request.json['id_kelas']
+    id_bank_soal = request.json['id_bank_soal']
+    mata_pelajaran = request.json['mata_pelajaran']
+    status = request.json['status']
+    tanggal_tes = request.json['tanggal_tes']
+
+    new_ujian = Ujian(id_kelas, id_bank_soal,
+                      mata_pelajaran, status, tanggal_tes)
+    db.session.add(new_ujian)
+    db.session.commit()
+
+    return ujian_schema.jsonify(new_ujian)
+
+# Delete a Ujian
+@app.route('/ujian/<id>', methods=['DELETE'])
+def delete_ujian(id):
+    ujian = Ujian.query.get(id)
+    db.session.delete(ujian)
+    db.session.commit()
+
+    return ujian_schema.jsonify(ujian)
+
+# Edit Ujian
+@app.route('/ujian/<id>', methods=['PUT'])
+def update_ujian(id):
+    ujian = Ujian.query.get(id)
+
+    ujian.id_kelas = request.json['id_kelas']
+    ujian.id_bank_soal = request.json['id_bank_soal']
+    ujian.mata_pelajaran = request.json['mata_pelajaran']
+    ujian.status = request.json['status']
+    ujian.tanggal_tes = request.json['tanggal_tes']
+
+    db.session.commit()
+
+    return ujian_schema.jsonify(ujian)
 
 
 # Run Server
