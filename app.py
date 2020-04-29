@@ -566,6 +566,226 @@ def update_ujian(id):
     return ujian_schema.jsonify(ujian)
 
 
+# Model Bank Soal
+class BankSoal(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nama = db.Column(db.String(100))
+
+    def __init__(self, nama):
+        self.nama = nama
+
+
+# Schema Bank Soal
+class BankSoalSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'nama')
+
+
+# Init Bank Soal Schema
+bank_soal_schema = BankSoalSchema()
+many_bank_soal_schema = BankSoalSchema(many=True)
+
+# Get All Bank Soal
+@app.route('/bank-soal', methods=['GET'])
+def get_bank_soal():
+    all_bank_soal = BankSoal.query.all()
+    result = many_bank_soal_schema.dump(all_bank_soal)
+
+    return jsonify(result)
+
+# Get a Bank Soal
+@app.route('/bank-soal/<id>', methods=['GET'])
+def get_one_bank_soal(id):
+    bank_soal = BankSoal.query.get(id)
+
+    return bank_soal_schema.jsonify(bank_soal)
+
+# Create Bank Soal
+@app.route('/bank-soal', methods=['POST'])
+def add_bank_soal():
+    nama = request.json['nama']
+
+    new_bank_soal = BankSoal(nama)
+    db.session.add(new_bank_soal)
+    db.session.commit()
+
+    return bank_soal_schema.jsonify(new_bank_soal)
+
+# Delete Bank Soal
+@app.route('/bank-soal/<id>', methods=['DELETE'])
+def delete_bank_soal(id):
+    bank_soal = BankSoal.query.get(id)
+    db.session.delete(bank_soal)
+    db.session.commit()
+
+    return bank_soal_schema.jsonify(bank_soal)
+
+# Edit Bank Soal
+@app.route('/bank-soal/<id>', methods=['PUT'])
+def update_bank_soal(id):
+    bank_soal = BankSoal.query.get(id)
+
+    bank_soal.nama = request.json['nama']
+
+    db.session.commit()
+
+    return bank_soal_schema.jsonify(bank_soal)
+
+
+# Model Soal
+class Soal(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    id_bank_soal = db.Column(db.Integer)
+    pertanyaan = db.Column(db.String(500))
+    pilihan = db.relationship('PilihanSoal', backref='soal', lazy=True)
+
+
+class SoalSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'id_bank_soal', 'pertanyaan')
+
+
+soal_schema = SoalSchema()
+many_soal_schema = SoalSchema(many=True)
+
+
+# Schema Pilihan Soal
+class PilihanSoalSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'id_soal', 'pilihan', 'is_right')
+
+
+# Schema Soal Custom
+class SoalSchemaCustom(ma.Schema):
+    class Meta:
+        model = Soal
+        fields = ('id', 'id_bank_soal', 'pertanyaan', 'pilihan')
+    pilihan = ma.Nested(PilihanSoalSchema(many=True))
+
+
+custom_soal_schema = SoalSchemaCustom()
+many_custom_soal_schema = SoalSchemaCustom(many=True)
+
+
+# Get All Soal by id_bank_soal with Pilihan
+@app.route('/soal/bank-soal/<id_bank_soal>', methods=['GET'])
+def get_soal_by_bank_pilihan(id_bank_soal):
+    all_soal = Soal.query.filter_by(id_bank_soal=id_bank_soal)
+    result = many_custom_soal_schema.dump(all_soal)
+
+    return jsonify(result)
+
+# Get All Soal by id_bank_soal
+@app.route('/soal/<id_bank_soal>', methods=['GET'])
+def get_soal_by_bank(id_bank_soal):
+    all_soal = Soal.query.filter_by(id_bank_soal=id_bank_soal)
+    result = many_soal_schema.dump(all_soal)
+
+    return jsonify(result)
+
+# Create Soal
+@app.route('/soal', methods=['POST'])
+def add_soal():
+    id_bank_soal = request.json['id_bank_soal']
+    pertanyaan = request.json['pertanyaan']
+
+    new_soal = Soal(id_bank_soal=id_bank_soal, pertanyaan=pertanyaan)
+    db.session.add(new_soal)
+    db.session.commit()
+
+    return soal_schema.jsonify(new_soal)
+
+# Delete Soal
+@app.route('/soal/<id>', methods=['DELETE'])
+def delete_soal(id):
+    soal = Soal.query.get(id)
+    db.session.delete(soal)
+    db.session.commit()
+
+    return soal_schema.jsonify(soal)
+
+# Edit Soal
+@app.route('/soal/<id>', methods=['PUT'])
+def update_soal(id):
+    soal = Soal.query.get(id)
+
+    soal.id_bank_soal = request.json['id_bank_soal']
+    soal.pertanyaan = request.json['pertanyaan']
+
+    db.session.commit()
+
+    return soal_schema.jsonify(soal)
+
+
+# Model Pilihan Soal
+class PilihanSoal(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    id_soal = db.Column(db.Integer, db.ForeignKey('soal.id'), nullable=False)
+    pilihan = db.Column(db.String(100))
+    is_right = db.Column(db.Integer)
+
+    def __init__(self, id_soal, pilihan, is_right):
+        self.id_soal = id_soal
+        self.pilihan = pilihan
+        self.is_right = is_right
+
+
+# Init Pilihan Soal Schema
+pilihan_soal_schema = PilihanSoalSchema()
+many_pilihan_soal_schema = PilihanSoalSchema(many=True)
+
+# Get All Pilihan Soal
+@app.route('/pilihan-soal', methods=['GET'])
+def get_all_pilihan_soal():
+    all_pilihan_soal = PilihanSoal.query.all()
+    result = many_pilihan_soal_schema.dump(all_pilihan_soal)
+
+    return jsonify(result)
+
+# Get All Pilihan Soal by id_soal
+@app.route('/pilihan-soal/<id_soal>', methods=['GET'])
+def get_all_pilihan_soal_by_id_soal(id_soal):
+    all_pilihan_soal = PilihanSoal.query.filter_by(id_soal=id_soal)
+    result = many_pilihan_soal_schema.dump(all_pilihan_soal)
+
+    return jsonify(result)
+
+# Create Pilihan Soal
+@app.route('/pilihan-soal', methods=['POST'])
+def add_pilihan_soal():
+    id_soal = request.json['id_soal']
+    pilihan = request.json['pilihan']
+    is_right = request.json['is_right']
+
+    new_pilihan_soal = PilihanSoal(id_soal, pilihan, is_right)
+    db.session.add(new_pilihan_soal)
+    db.session.commit()
+
+    return pilihan_soal_schema.jsonify(new_pilihan_soal)
+
+# Delete Pilihan Soal
+@app.route('/pilihan-soal/<id>', methods=['DELETE'])
+def delete_pilihan_soal(id):
+    pilihan_soal = PilihanSoal.query.get(id)
+    db.session.delete(pilihan_soal)
+    db.session.commit()
+
+    return pilihan_soal_schema.jsonify(pilihan_soal)
+
+# Edit a Pilihan Soal
+@app.route('/pilihan-soal/<id>', methods=['PUT'])
+def edit_pilihan_soal(id):
+    pilihan_soal = PilihanSoal.query.get(id)
+
+    pilihan_soal.id_soal = request.json['id_soal']
+    pilihan_soal.pilihan = request.json['pilihan']
+    pilihan_soal.is_right = request.json['is_right']
+
+    db.session.commit()
+
+    return pilihan_soal_schema.jsonify(pilihan_soal)
+
+
 # Run Server
 if __name__ == '__main__':
     app.run(debug=True)
