@@ -518,6 +518,13 @@ def get_ujian():
 
     return jsonify(result)
 
+# Get Active Ujian
+@app.route('/ujian/active/<id_kelas>')
+def get_active_ujian(id_kelas):
+    ujian = Ujian.query.filter_by(id_kelas=id_kelas, status=1).first()
+
+    return ujian_schema.jsonify(ujian)
+
 # Get a Ujian
 @app.route('/ujian/<id>', methods=['GET'])
 def get_one_ujian(id):
@@ -784,6 +791,75 @@ def edit_pilihan_soal(id):
     db.session.commit()
 
     return pilihan_soal_schema.jsonify(pilihan_soal)
+
+
+# Model Jawaban
+class Jawaban(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    id_siswa = db.Column(db.Integer)
+    id_ujian = db.Column(db.Integer)
+    id_soal = db.Column(db.Integer)
+    jawaban = db.Column(db.Integer)
+    status = db.Column(db.Integer)
+
+    def __init__(self, id_siswa, id_ujian, id_soal, jawaban, status):
+        self.id_siswa = id_siswa
+        self.id_ujian = id_ujian
+        self.id_soal = id_soal
+        self.jawaban = jawaban
+        self.status = status
+
+
+# Jawaban Schema
+class JawabanSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'id_siswa', 'id_ujian', 'id_soal', 'jawaban', 'status')
+
+
+# Init Jawaban Schema
+jawaban_schema = JawabanSchema()
+many_jawaban_schema = JawabanSchema(many=True)
+
+
+# Get All Jawaban
+@app.route('/jawaban', methods=['GET'])
+def get_jawaban():
+    all_jawaban = Jawaban.query.all()
+    result = many_jawaban_schema.dump(all_jawaban)
+
+    return jsonify(result)
+
+# Get All Jawaban Siswa
+@app.route('/jawaban/siswa/<id_siswa>/<id_ujian>', methods=['GET'])
+def get_jawaban_siswa(id_siswa, id_ujian):
+    all_jawaban = Jawaban.query.filter_by(id_siswa=id_siswa, id_ujian=id_ujian)
+    result = many_jawaban_schema.dump(all_jawaban)
+
+    return jsonify(result)
+
+# Add Jawaban
+@app.route('/jawaban', methods=['POST'])
+def add_jawaban():
+    id_siswa = request.json['id_siswa']
+    id_ujian = request.json['id_ujian']
+    id_soal = request.json['id_soal']
+    jawaban = request.json['jawaban']
+    status = request.json['status']
+
+    new_jawaban = Jawaban(id_siswa, id_ujian, id_soal, jawaban, status)
+    db.session.add(new_jawaban)
+    db.session.commit()
+
+    return jawaban_schema.jsonify(new_jawaban)
+
+# Delete Jawaban
+@app.route('/jawaban/<id>', methods=['DELETE'])
+def delete_jawaban(id):
+    jawaban = Jawaban.query.get(id)
+    db.session.delete(jawaban)
+    db.session.commit()
+
+    return jawaban_schema.jsonify(jawaban)
 
 
 # Run Server
