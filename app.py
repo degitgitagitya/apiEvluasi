@@ -862,6 +862,83 @@ def delete_jawaban(id):
     return jawaban_schema.jsonify(jawaban)
 
 
+# Model Hasil Manual
+class HasilManual(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    id_siswa = db.Column(db.Integer)
+    id_kelas = db.Column(db.Integer)
+    id_soal = db.Column(db.Integer)
+    id_bank_soal = db.Column(db.Integer)
+    status = db.Column(db.Integer)
+    b = db.Column(db.Float)
+    a = db.Column(db.Float)
+    l = db.Column(db.Float)
+    el = db.Column(db.Float)
+    p = db.Column(db.Float)
+
+    def __init__(self, id_siswa, id_kelas, id_soal, id_bank_soal, status, b, a, l, el, p):
+        self.id_siswa = id_siswa
+        self.id_kelas = id_kelas
+        self.id_soal = id_soal
+        self.id_bank_soal = id_bank_soal
+        self.status = status
+        self.b = b
+        self.a = a
+        self.l = l
+        self.el = el
+        self.p = p
+
+
+# Schema Hasil Manual
+class HasilManualSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'id_siswa', 'id_kelas', 'id_soal',
+                  'id_bank_soal', 'status', 'b', 'a', 'l', 'el', 'p')
+
+
+# Init Hasil Manual Schema
+hasil_manual_schema = HasilManualSchema()
+many_hasil_manual_schema = HasilManualSchema(many=True)
+
+# Get All Hasil Manual Schema by id_kelas
+@app.route('/hasil-manual/<id_kelas>/<id_soal>/<id_bank_soal>', methods=['GET'])
+def get_hasil_manual_by_id_kelas(id_kelas, id_soal, id_bank_soal):
+    hasil_manual = HasilManual.query.filter_by(
+        id_kelas=id_kelas, id_soal=id_soal, id_bank_soal=id_bank_soal)
+    result = many_hasil_manual_schema.dump(hasil_manual)
+
+    return jsonify(result)
+
+
+# Sync with id_kelas
+@app.route('/hasil-manual/sync/<id_kelas>/<id_soal>/<id_bank_soal>', methods=['POST'])
+def sync_hasil_manual_by_id_kelas(id_kelas, id_soal, id_bank_soal):
+    all_siswa = Siswa.query.filter_by(id_kelas=id_kelas)
+    result = siswas_schema.dump(all_siswa)
+
+    for i in result:
+        temp = HasilManual(i['id'], id_kelas, id_soal,
+                           id_bank_soal, 0, 0, 0, 0, 0, 0)
+        db.session.add(temp)
+        db.session.commit()
+
+    hasil_manual = HasilManual.query.filter_by(
+        id_kelas=id_kelas, id_soal=id_soal, id_bank_soal=id_bank_soal)
+    new_result = many_hasil_manual_schema.dump(hasil_manual)
+
+    return jsonify(new_result)
+
+# Change Hasil Manual Status
+@app.route('/hasil-manual/status/<id>/<status>', methods=['PUT'])
+def change_status_hasil_manual(id, status):
+    hasil_manual = HasilManual.query.get(id)
+    hasil_manual.status = status
+
+    db.session.commit()
+
+    return hasil_manual_schema.jsonify(hasil_manual)
+
+
 # Run Server
 if __name__ == '__main__':
     app.run(debug=True)
