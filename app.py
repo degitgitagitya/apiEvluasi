@@ -900,7 +900,7 @@ class HasilManualSchema(ma.Schema):
 hasil_manual_schema = HasilManualSchema()
 many_hasil_manual_schema = HasilManualSchema(many=True)
 
-# Get All Hasil Manual Schema by id_kelas
+# Get All Hasil Manual by id_kelas
 @app.route('/hasil-manual/<id_kelas>/<id_soal>/<id_bank_soal>', methods=['GET'])
 def get_hasil_manual_by_id_kelas(id_kelas, id_soal, id_bank_soal):
     hasil_manual = HasilManual.query.filter_by(
@@ -937,6 +937,101 @@ def change_status_hasil_manual(id, status):
     db.session.commit()
 
     return hasil_manual_schema.jsonify(hasil_manual)
+
+
+# Model Bobot
+class Bobot(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    id_kelas = db.Column(db.Integer)
+    id_soal = db.Column(db.Integer)
+    pertanyaan = db.Column(db.String(300))
+    id_bank_soal = db.Column(db.Integer)
+    b = db.Column(db.Float)
+    a = db.Column(db.Float)
+    l = db.Column(db.Float)
+    el = db.Column(db.Float)
+    p = db.Column(db.Float)
+
+    def __init__(self, id_kelas, id_soal, pertanyaan, id_bank_soal, b, a, l, el, p):
+        self.id_kelas = id_kelas
+        self.id_soal = id_soal
+        self.pertanyaan = pertanyaan
+        self.id_bank_soal = id_bank_soal
+        self.b = b
+        self.a = a
+        self.l = l
+        self.el = el
+        self.p = p
+
+
+# Schema Bobot
+class BobotSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'id_kelas', 'id_soal', 'pertanyaan',
+                  'id_bank_soal', 'b', 'a', 'l', 'el', 'p')
+
+
+# Init Schema Bobot
+bobot_schema = BobotSchema()
+many_bobot_schema = BobotSchema(many=True)
+
+# Get All Bobot by id_kelas id_soal id_bank_soal
+@app.route('/bobot/<id_kelas>/<id_bank_soal>', methods=['GET'])
+def get_all_bobot_custom(id_kelas, id_bank_soal):
+    bobot = Bobot.query.filter_by(
+        id_kelas=id_kelas, id_bank_soal=id_bank_soal)
+    result = many_bobot_schema.dump(bobot)
+
+    return jsonify(result)
+
+# Sync Bobot
+@app.route('/bobot/sync/<id_kelas>/<id_bank_soal>', methods=['POST'])
+def sync_bobot(id_kelas, id_bank_soal):
+    all_soal = Soal.query.filter_by(id_bank_soal=id_bank_soal)
+    result = many_soal_schema.dump(all_soal)
+
+    for i in result:
+        temp = Bobot(id_kelas, i['id'], i['pertanyaan'],
+                     id_bank_soal, 0, 0, 0, 0, 0)
+        db.session.add(temp)
+        db.session.commit()
+
+    bobot = Bobot.query.filter_by(
+        id_kelas=id_kelas, id_bank_soal=id_bank_soal)
+    result = many_bobot_schema.dump(bobot)
+
+    return jsonify(result)
+
+# Generate Bobot
+@app.route('/bobot/generate/<id_kelas>/<id_bank_soal>', methods=['PUT'])
+def generate_bobot(id_kelas, id_bank_soal):
+    bobot = Bobot.query.filter_by(
+        id_kelas=id_kelas, id_bank_soal=id_bank_soal)
+    result = many_bobot_schema.dump(bobot)
+
+    for i in result:
+        hasil_manual = HasilManual.query.filter_by(
+            id_kelas=i['id_kelas'], id_soal=i['id_soal'], id_bank_soal=i['id_bank_soal'])
+        listHasilManual = many_hasil_manual_schema.dump(hasil_manual)
+
+        jumlah_soal = 0
+        jumlah_jawaban_benar = 0
+        jumlah_jawaban_salah = 0
+
+        for j in listHasilManual:
+            jumlah_soal = jumlah_soal + 1
+            if (j['status'] == 1):
+                jumlah_jawaban_benar = jumlah_jawaban_benar + 1
+            else:
+                jumlah_jawaban_salah = jumlah_jawaban_salah + 1
+
+        b = jumlah_jawaban_benar / jumlah_soal
+
+        new_hasil_manual = Bobot.query.get(i['id'])
+        new_hasil_manual.b = b
+        db.session.commit()
+
+    return (jsonify(result))
 
 
 # Run Server
