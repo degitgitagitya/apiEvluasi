@@ -4,6 +4,8 @@ from flask_marshmallow import Marshmallow
 from flask_cors import CORS
 import os
 import secrets
+import numpy as np
+import pandas as pd
 
 # init app
 app = Flask(__name__)
@@ -1009,27 +1011,81 @@ def generate_bobot(id_kelas, id_bank_soal):
         id_kelas=id_kelas, id_bank_soal=id_bank_soal)
     result = many_bobot_schema.dump(bobot)
 
+    index_i = 0
+    index_j = 0
+    array_i = []
+    array_j = []
+    index_id_soal = []
+
+   
+
     for i in result:
         hasil_manual = HasilManual.query.filter_by(
             id_kelas=i['id_kelas'], id_soal=i['id_soal'], id_bank_soal=i['id_bank_soal'])
         listHasilManual = many_hasil_manual_schema.dump(hasil_manual)
+        index_id_soal.append(i['id'])
 
-        jumlah_soal = 0
+        jumlah_siswa = 0
         jumlah_jawaban_benar = 0
         jumlah_jawaban_salah = 0
 
+        array_j = []
+
         for j in listHasilManual:
-            jumlah_soal = jumlah_soal + 1
+            array_j.append(j['status'])
+            jumlah_siswa = jumlah_siswa + 1
             if (j['status'] == 1):
                 jumlah_jawaban_benar = jumlah_jawaban_benar + 1
             else:
                 jumlah_jawaban_salah = jumlah_jawaban_salah + 1
+        
+        array_i.append(array_j)
 
-        b = jumlah_jawaban_benar / jumlah_soal
+        b = jumlah_jawaban_benar / jumlah_siswa
 
         new_hasil_manual = Bobot.query.get(i['id'])
         new_hasil_manual.b = b
         db.session.commit()
+
+    new_list = np.array(array_i)
+    new_df = pd.DataFrame(data=new_list, index=index_id_soal)
+    new_df['Jumlah'] = new_df.sum(axis=1)
+    new_df = new_df.T
+    new_df['Total'] = new_df.sum(axis=1)
+    new_df = new_df.sort_values(by=['Total'])
+
+    jumlah_soal = len(new_df)
+    jumlah_per_kelompok = jumlah_soal // 3
+
+    kelompok_awal = new_df[:jumlah_per_kelompok]
+    kelompok_akhir = new_df[jumlah_per_kelompok*2+1: - 1]
+    jumlah = new_df[-1:]
+    
+
+    kelompok_awal_sum = pd.DataFrame(data=kelompok_awal.sum(axis=0))
+    kelompok_akhir_sum = pd.DataFrame(data=kelompok_akhir.sum(axis=0))
+    jumlah = jumlah.T
+
+    kelompok_awal_sum = kelompok_awal_sum.drop(['Total'])
+
+
+    for index, row in kelompok_awal_sum.iterrows():
+        a = kelompok_akhir_sum.loc[ index , : ].values
+        b = row.values
+        c = jumlah.loc[index, :].values
+        if (c == 0):
+            x = 0
+        else:
+            x = (2*(b - a)) / c
+
+        new_hasil_manual = Bobot.query.get(index)
+        new_hasil_manual.a = x
+        db.session.commit()
+        
+        
+    bobot = Bobot.query.filter_by(
+        id_kelas=id_kelas, id_bank_soal=id_bank_soal)
+    result = many_bobot_schema.dump(bobot)
 
     return (jsonify(result))
 
