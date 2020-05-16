@@ -6,6 +6,7 @@ import os
 import secrets
 import numpy as np
 import pandas as pd
+import math
 
 # init app
 app = Flask(__name__)
@@ -940,6 +941,31 @@ def change_status_hasil_manual(id, status):
 
     return hasil_manual_schema.jsonify(hasil_manual)
 
+# Hard Refresh
+@app.route('/hasil-manual/hard-refresh/<id_kelas>/<id_soal>/<id_bank_soal>', methods=['DELETE'])
+def hard_refresh_hasil_manual(id_kelas, id_soal, id_bank_soal):
+    hasil_manual = HasilManual.query.filter_by(
+        id_kelas=id_kelas, id_soal=id_soal, id_bank_soal=id_bank_soal)
+
+    for x in hasil_manual:
+        db.session.delete(x)
+        db.session.commit()
+
+    all_siswa = Siswa.query.filter_by(id_kelas=id_kelas)
+    result = siswas_schema.dump(all_siswa)
+
+    for i in result:
+        temp = HasilManual(i['id'], id_kelas, id_soal,
+                           id_bank_soal, 0, 0, 0, 0, 0, 0)
+        db.session.add(temp)
+        db.session.commit()
+
+    hasil_manual = HasilManual.query.filter_by(
+        id_kelas=id_kelas, id_soal=id_soal, id_bank_soal=id_bank_soal)
+    new_result = many_hasil_manual_schema.dump(hasil_manual)
+
+    return jsonify(new_result)
+
 
 # Model Bobot
 class Bobot(db.Model):
@@ -989,6 +1015,31 @@ def get_all_bobot_custom(id_kelas, id_bank_soal):
 # Sync Bobot
 @app.route('/bobot/sync/<id_kelas>/<id_bank_soal>', methods=['POST'])
 def sync_bobot(id_kelas, id_bank_soal):
+    all_soal = Soal.query.filter_by(id_bank_soal=id_bank_soal)
+    result = many_soal_schema.dump(all_soal)
+
+    for i in result:
+        temp = Bobot(id_kelas, i['id'], i['pertanyaan'],
+                     id_bank_soal, 0, 0, 0, 0, 0)
+        db.session.add(temp)
+        db.session.commit()
+
+    bobot = Bobot.query.filter_by(
+        id_kelas=id_kelas, id_bank_soal=id_bank_soal)
+    result = many_bobot_schema.dump(bobot)
+
+    return jsonify(result)
+
+# Hard refresh bobot
+@app.route('/bobot/hard-refresh/<id_kelas>/<id_bank_soal>', methods=['DELETE'])
+def hard_refresh_bobot(id_kelas, id_bank_soal):
+    bobot = Bobot.query.filter_by(
+        id_kelas=id_kelas, id_bank_soal=id_bank_soal)
+    
+    for x in bobot:
+        db.session.delete(x)
+        db.session.commit()
+
     all_soal = Soal.query.filter_by(id_bank_soal=id_bank_soal)
     result = many_soal_schema.dump(all_soal)
 
@@ -1087,6 +1138,29 @@ def generate_bobot(id_kelas, id_bank_soal):
         id_kelas=id_kelas, id_bank_soal=id_bank_soal)
     result = many_bobot_schema.dump(bobot)
 
+    daftar_bobot = pd.DataFrame(result)
+
+    daftar_bobot['l'] = daftar_bobot.apply(lambda x: x['a']*(2-x['b']), axis = 1)
+    daftar_bobot['el'] = daftar_bobot.apply(lambda x: math.exp(x['l']), axis = 1)
+    daftar_bobot['p'] = daftar_bobot.apply(lambda x: 1 / (1 + x['el']), axis = 1)
+
+    for index, row in daftar_bobot.iterrows():
+        l = row['l']
+        el = row['el']
+        p = row['p']
+        id = row['id']
+
+        new_hasil_manual = Bobot.query.get(id)
+        new_hasil_manual.l = l
+        new_hasil_manual.el = el
+        new_hasil_manual.p = p
+        db.session.commit()
+
+
+    bobot = Bobot.query.filter_by(
+        id_kelas=id_kelas, id_bank_soal=id_bank_soal)
+    result = many_bobot_schema.dump(bobot)
+    
     return (jsonify(result))
 
 
