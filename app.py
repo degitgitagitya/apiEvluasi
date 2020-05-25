@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask_cors import CORS
+from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
 import os
 import secrets
 import numpy as np
@@ -979,8 +981,9 @@ class Bobot(db.Model):
     l = db.Column(db.Float)
     el = db.Column(db.Float)
     p = db.Column(db.Float)
+    cluster = db.Column(db.Integer)
 
-    def __init__(self, id_kelas, id_soal, pertanyaan, id_bank_soal, b, a, l, el, p):
+    def __init__(self, id_kelas, id_soal, pertanyaan, id_bank_soal, b, a, l, el, p, cluster):
         self.id_kelas = id_kelas
         self.id_soal = id_soal
         self.pertanyaan = pertanyaan
@@ -990,13 +993,14 @@ class Bobot(db.Model):
         self.l = l
         self.el = el
         self.p = p
+        self.cluster = cluster
 
 
 # Schema Bobot
 class BobotSchema(ma.Schema):
     class Meta:
         fields = ('id', 'id_kelas', 'id_soal', 'pertanyaan',
-                  'id_bank_soal', 'b', 'a', 'l', 'el', 'p')
+                  'id_bank_soal', 'b', 'a', 'l', 'el', 'p', 'cluster')
 
 
 # Init Schema Bobot
@@ -1020,7 +1024,7 @@ def sync_bobot(id_kelas, id_bank_soal):
 
     for i in result:
         temp = Bobot(id_kelas, i['id'], i['pertanyaan'],
-                     id_bank_soal, 0, 0, 0, 0, 0)
+                     id_bank_soal, 0, 0, 0, 0, 0, 0)
         db.session.add(temp)
         db.session.commit()
 
@@ -1045,7 +1049,7 @@ def hard_refresh_bobot(id_kelas, id_bank_soal):
 
     for i in result:
         temp = Bobot(id_kelas, i['id'], i['pertanyaan'],
-                     id_bank_soal, 0, 0, 0, 0, 0)
+                     id_bank_soal, 0, 0, 0, 0, 0, 0)
         db.session.add(temp)
         db.session.commit()
 
@@ -1162,6 +1166,37 @@ def generate_bobot(id_kelas, id_bank_soal):
     result = many_bobot_schema.dump(bobot)
     
     return (jsonify(result))
+
+# Cluster
+@app.route('/cluster/<id_kelas>/<id_bank_soal>', methods=['PUT'])
+def cluster(id_kelas, id_bank_soal):
+    bobot = Bobot.query.filter_by(
+        id_kelas=id_kelas, id_bank_soal=id_bank_soal)
+    result = many_bobot_schema.dump(bobot)
+
+    array = []
+
+    for i in result:
+        array.append([i["a"], i["b"]])
+
+    np_array = np.array(array)
+
+    kmeans = KMeans(n_clusters=4, random_state=0).fit(np_array)
+
+    index = 0
+
+    for data in result:
+        new_data = Bobot.query.get(data["id"])
+        new_data.cluster = kmeans.labels_[index].item()
+        db.session.commit()
+        index = index + 1
+
+    bobot = Bobot.query.filter_by(
+        id_kelas=id_kelas, id_bank_soal=id_bank_soal)
+    result = many_bobot_schema.dump(bobot)
+
+    return (jsonify(result))
+
 
 
 # Run Server
