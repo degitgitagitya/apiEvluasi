@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask_cors import CORS
@@ -125,6 +125,22 @@ def update_siswa(id):
     db.session.commit()
 
     return siswa_schema.jsonify(siswa)
+
+# Batch Upload Siswa
+@app.route('/siswa/upload-batch/<int:id>', methods=['POST'])
+def upload_batch_siswa(id):
+    data = request.json['data']
+
+    for i in data:
+        new_siswa = Siswa(id, i['nis'], i['nama'], i['jenis_kelamin'], i['password'], 0)
+        db.session.add(new_siswa)
+
+    db.session.commit()
+
+    all_siswa = Siswa.query.filter_by(id_kelas=id)
+    result = siswas_schema.dump(all_siswa)
+
+    return jsonify(result)
 
 
 # Model Guru
@@ -728,6 +744,22 @@ def update_soal(id):
 
     return soal_schema.jsonify(soal)
 
+# Upload Batch Soal
+@app.route('/soal/upload-batch/<int:id>', methods=['POST'])
+def upload_batch_soal(id):
+    data = request.json['data']
+
+    for i in data:
+        new_soal = Soal(id_bank_soal=id, pertanyaan=i['pertanyaan'])
+        db.session.add(new_soal)
+
+    db.session.commit()
+
+    all_soal = Soal.query.filter_by(id_bank_soal=id)
+    result = many_soal_schema.dump(all_soal)
+
+    return jsonify(result)
+
 
 # Model Pilihan Soal
 class PilihanSoal(db.Model):
@@ -796,6 +828,22 @@ def edit_pilihan_soal(id):
     db.session.commit()
 
     return pilihan_soal_schema.jsonify(pilihan_soal)
+
+# Upload Batch Pilihan SOal
+@app.route('/pilihan-soal/upload-batch/<int:id>', methods=['POST'])
+def upload_batch_pilihan_soal(id):
+    data = request.json['data']
+
+    for i in data:
+        new_pilihan_soal = PilihanSoal(id, i['pilihan'], i['is_right'])
+        db.session.add(new_pilihan_soal)
+
+    db.session.commit()
+
+    all_pilihan_soal = PilihanSoal.query.filter_by(id_soal=id)
+    result = many_pilihan_soal_schema.dump(all_pilihan_soal)
+
+    return jsonify(result)
 
 
 # Model Jawaban
@@ -1198,6 +1246,21 @@ def cluster(id_kelas, id_bank_soal):
     return (jsonify(result))
 
 
+# Contoh CSV
+# Download Contoh Siswa
+@app.route('/file/siswa')
+def get_file_siswa():
+	return send_file('siswa.csv', as_attachment=True)
+
+# Download Contoh Soal
+@app.route('/file/soal')
+def get_file_soal():
+	return send_file('soal.csv', as_attachment=True)
+
+# Download Contoh Pilihan Soal
+@app.route('/file/pilihan-soal')
+def get_file_pilihan_soal():
+	return send_file('pilihansoal.csv', as_attachment=True)
 
 # Run Server
 if __name__ == '__main__':
