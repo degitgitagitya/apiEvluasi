@@ -1016,6 +1016,28 @@ def hard_refresh_hasil_manual(id_kelas, id_soal, id_bank_soal):
 
     return jsonify(new_result)
 
+# Batch update Hasil Manual
+@app.route('/hasil-manual/batch-update/<id_kelas>/<id_soal>/<id_bank_soal>', methods=['PUT'])
+def batch_update_hasil_manual(id_kelas, id_soal, id_bank_soal):
+    hasil_manual = HasilManual.query.filter_by(
+        id_kelas=id_kelas, id_soal=id_soal, id_bank_soal=id_bank_soal)
+
+    data = request.json['data']
+    index = 0
+
+    for i in data:
+        temp = HasilManual.query.get(hasil_manual[index].id)
+        temp.status = i['status']
+        db.session.commit()
+        index = index + 1
+
+
+    hasil_manual = HasilManual.query.filter_by(
+        id_kelas=id_kelas, id_soal=id_soal, id_bank_soal=id_bank_soal)
+    result = many_hasil_manual_schema.dump(hasil_manual)
+
+    return jsonify(result)
+
 
 # Model Bobot
 class Bobot(db.Model):
