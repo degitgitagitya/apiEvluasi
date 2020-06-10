@@ -595,6 +595,13 @@ def update_ujian(id):
 
     return ujian_schema.jsonify(ujian)
 
+# Check Available Ujian
+@app.route('/ujian/siswa/<id_kelas>/<tanggal>/<status>', methods=['GET'])
+def check_available_ujian(id_kelas, tanggal, status):
+    ujian = Ujian.query.filter_by(id_kelas=id_kelas, tanggal_tes=tanggal, status=1).first()
+    result = ujian_schema.dump(ujian)
+
+    return jsonify(result)
 
 # Model Bank Soal
 class BankSoal(db.Model):
@@ -932,6 +939,18 @@ def delete_jawaban(id):
     db.session.commit()
 
     return jawaban_schema.jsonify(jawaban)
+
+# Delete All Jawaban
+@app.route('/jawaban/delete-all/<id_siswa>/<id_ujian>', methods=['DELETE'])
+def delete_all_jawaban(id_siswa, id_ujian):
+    jawaban = Jawaban.query.filter_by(id_siswa=id_siswa, id_ujian=id_ujian)
+    result = many_jawaban_schema.dump(jawaban)
+
+    for i in jawaban:
+        db.session.delete(i)
+        db.session.commit()
+
+    return jsonify(result)
 
 
 # Model Hasil Manual
