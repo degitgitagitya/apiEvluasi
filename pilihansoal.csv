@@ -1,5 +1,5 @@
-pilihan,is_right
-\alpha \Lambda \mathbb{C},0
-\frac{2}{3},0
-\frac{2}{3}^{3},0
-\frac{2}{3}^{3}\bigcap ,1
+pilihan,is_right,analisis,keterangan
+\alpha \Lambda \mathbb{C},0,Salah pada operasi,Harus kembali ke materi konsep turunan
+\frac{2}{3},0,Salah pada konsep,Harus kembali ke materi konsep turunan
+\frac{2}{3}^{3},0,Salah pada fakta,Harus kembali ke materi konsep turunan
+\frac{2}{3}^{3}\bigcap,1,Salah pada prinsip,Harus kembali ke materi konsep turunan

@@ -511,20 +511,21 @@ class Ujian(db.Model):
     mata_pelajaran = db.Column(db.String(100))
     status = db.Column(db.Integer)
     tanggal_tes = db.Column(db.String(100))
+    waktu_selesai = db.Column(db.String(100))
 
-    def __init__(self, id_kelas, id_bank_soal, mata_pelajaran, status, tanggal_tes):
+    def __init__(self, id_kelas, id_bank_soal, mata_pelajaran, status, tanggal_tes, waktu_selesai):
         self.id_kelas = id_kelas
         self.id_bank_soal = id_bank_soal
         self.mata_pelajaran = mata_pelajaran
         self.status = status
         self.tanggal_tes = tanggal_tes
+        self.waktu_selesai = waktu_selesai
 
 
 # Ujian Schema
 class UjianSchema(ma.Schema):
     class Meta:
-        fields = ('id', 'id_kelas', 'id_bank_soal',
-                  'mata_pelajaran', 'status', 'tanggal_tes')
+        fields = ('id', 'id_kelas', 'id_bank_soal', 'mata_pelajaran', 'status', 'tanggal_tes', 'waktu_selesai')
 
 
 # Init Ujian Schema
@@ -561,9 +562,9 @@ def add_ujian():
     mata_pelajaran = request.json['mata_pelajaran']
     status = request.json['status']
     tanggal_tes = request.json['tanggal_tes']
+    waktu_selesai = request.json['waktu_selesai']
 
-    new_ujian = Ujian(id_kelas, id_bank_soal,
-                      mata_pelajaran, status, tanggal_tes)
+    new_ujian = Ujian(id_kelas, id_bank_soal, mata_pelajaran, status, tanggal_tes, waktu_selesai)
     db.session.add(new_ujian)
     db.session.commit()
 
@@ -588,6 +589,7 @@ def update_ujian(id):
     ujian.mata_pelajaran = request.json['mata_pelajaran']
     ujian.status = request.json['status']
     ujian.tanggal_tes = request.json['tanggal_tes']
+    ujian.waktu_selesai = request.json['waktu_selesai']
 
     db.session.commit()
 
@@ -680,7 +682,7 @@ many_soal_schema = SoalSchema(many=True)
 # Schema Pilihan Soal
 class PilihanSoalSchema(ma.Schema):
     class Meta:
-        fields = ('id', 'id_soal', 'pilihan', 'is_right')
+        fields = ('id', 'id_soal', 'pilihan', 'is_right', 'analisis', 'keterangan')
 
 
 # Schema Soal Custom
@@ -767,11 +769,15 @@ class PilihanSoal(db.Model):
     id_soal = db.Column(db.Integer, db.ForeignKey('soal.id'), nullable=False)
     pilihan = db.Column(db.String(100))
     is_right = db.Column(db.Integer)
+    analisis = db.Column(db.String(100))
+    keterangan = db.Column(db.String(100))
 
-    def __init__(self, id_soal, pilihan, is_right):
+    def __init__(self, id_soal, pilihan, is_right, analisis, keterangan):
         self.id_soal = id_soal
         self.pilihan = pilihan
         self.is_right = is_right
+        self.analisis = analisis
+        self.keterangan = keterangan
 
 
 # Init Pilihan Soal Schema
@@ -800,8 +806,10 @@ def add_pilihan_soal():
     id_soal = request.json['id_soal']
     pilihan = request.json['pilihan']
     is_right = request.json['is_right']
+    analisis = request.json['analisis']
+    keterangan = request.json['keterangan']
 
-    new_pilihan_soal = PilihanSoal(id_soal, pilihan, is_right)
+    new_pilihan_soal = PilihanSoal(id_soal, pilihan, is_right, analisis, keterangan)
     db.session.add(new_pilihan_soal)
     db.session.commit()
 
@@ -824,6 +832,8 @@ def edit_pilihan_soal(id):
     pilihan_soal.id_soal = request.json['id_soal']
     pilihan_soal.pilihan = request.json['pilihan']
     pilihan_soal.is_right = request.json['is_right']
+    pilihan_soal.analisis = request.json['analisis']
+    pilihan_soal.keterangan = request.json['keterangan']
 
     db.session.commit()
 
@@ -835,7 +845,7 @@ def upload_batch_pilihan_soal(id):
     data = request.json['data']
 
     for i in data:
-        new_pilihan_soal = PilihanSoal(id, i['pilihan'], i['is_right'])
+        new_pilihan_soal = PilihanSoal(id, i['pilihan'], i['is_right'], i['analisis'], i['keterangan'])
         db.session.add(new_pilihan_soal)
 
     db.session.commit()
@@ -852,21 +862,27 @@ class Jawaban(db.Model):
     id_siswa = db.Column(db.Integer)
     id_ujian = db.Column(db.Integer)
     id_soal = db.Column(db.Integer)
-    jawaban = db.Column(db.Integer)
+    jawaban = db.Column(db.String(100))
+    kunci = db.Column(db.String(100))
+    analisis = db.Column(db.String(100))
+    keterangan = db.Column(db.String(100))
     status = db.Column(db.Integer)
 
-    def __init__(self, id_siswa, id_ujian, id_soal, jawaban, status):
+    def __init__(self, id_siswa, id_ujian, id_soal, jawaban, kunci, analisis, keterangan, status):
         self.id_siswa = id_siswa
         self.id_ujian = id_ujian
         self.id_soal = id_soal
         self.jawaban = jawaban
+        self.kunci = kunci
+        self.analisis = analisis
+        self.keterangan = keterangan
         self.status = status
 
 
 # Jawaban Schema
 class JawabanSchema(ma.Schema):
     class Meta:
-        fields = ('id', 'id_siswa', 'id_ujian', 'id_soal', 'jawaban', 'status')
+        fields = ('id', 'id_siswa', 'id_ujian', 'id_soal', 'jawaban', 'kunci', 'analisis', 'keterangan', 'status')
 
 
 # Init Jawaban Schema
@@ -897,9 +913,12 @@ def add_jawaban():
     id_ujian = request.json['id_ujian']
     id_soal = request.json['id_soal']
     jawaban = request.json['jawaban']
+    kunci = request.json['kunci']
+    analisis = request.json['analisis']
+    keterangan = request.json['keterangan']
     status = request.json['status']
 
-    new_jawaban = Jawaban(id_siswa, id_ujian, id_soal, jawaban, status)
+    new_jawaban = Jawaban(id_siswa, id_ujian, id_soal, jawaban, kunci, analisis, keterangan, status)
     db.session.add(new_jawaban)
     db.session.commit()
 
