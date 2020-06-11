@@ -874,8 +874,9 @@ class Jawaban(db.Model):
     analisis = db.Column(db.String(100))
     keterangan = db.Column(db.String(100))
     status = db.Column(db.Integer)
+    pertanyaan = db.Column(db.String(200))
 
-    def __init__(self, id_siswa, id_ujian, id_soal, jawaban, kunci, analisis, keterangan, status):
+    def __init__(self, id_siswa, id_ujian, id_soal, jawaban, kunci, analisis, keterangan, status, pertanyaan):
         self.id_siswa = id_siswa
         self.id_ujian = id_ujian
         self.id_soal = id_soal
@@ -884,12 +885,13 @@ class Jawaban(db.Model):
         self.analisis = analisis
         self.keterangan = keterangan
         self.status = status
+        self.pertanyaan = pertanyaan
 
 
 # Jawaban Schema
 class JawabanSchema(ma.Schema):
     class Meta:
-        fields = ('id', 'id_siswa', 'id_ujian', 'id_soal', 'jawaban', 'kunci', 'analisis', 'keterangan', 'status')
+        fields = ('id', 'id_siswa', 'id_ujian', 'id_soal', 'jawaban', 'kunci', 'analisis', 'keterangan', 'status', 'pertanyaan')
 
 
 # Init Jawaban Schema
@@ -924,8 +926,9 @@ def add_jawaban():
     analisis = request.json['analisis']
     keterangan = request.json['keterangan']
     status = request.json['status']
+    pertanyaan = request.json['pertanyaan']
 
-    new_jawaban = Jawaban(id_siswa, id_ujian, id_soal, jawaban, kunci, analisis, keterangan, status)
+    new_jawaban = Jawaban(id_siswa, id_ujian, id_soal, jawaban, kunci, analisis, keterangan, status, pertanyaan)
     db.session.add(new_jawaban)
     db.session.commit()
 
@@ -1115,6 +1118,56 @@ class BobotSchema(ma.Schema):
 bobot_schema = BobotSchema()
 many_bobot_schema = BobotSchema(many=True)
 
+# Get First Soal
+@app.route('/bobot/first-soal/<id_kelas>/<id_bank_soal>', methods=['GET'])
+def get_first_soal(id_kelas, id_bank_soal):
+    bobot = Bobot.query.filter_by(id_kelas=id_kelas, id_bank_soal=id_bank_soal, cluster=0).first()
+    soal = Soal.query.get(bobot.id_soal)
+    result = custom_soal_schema.dump(soal)
+
+    return jsonify(result)
+
+# Get Next Soal
+@app.route('/bobot/next-soal/<id_kelas>/<id_bank_soal>/<id_soal>/<status>/<int:index_mudah>/<int:index_sedang>/<int:index_susah>', methods=['GET'])
+def get_next_soal(id_kelas, id_bank_soal, id_soal, status, index_mudah, index_sedang, index_susah):
+    bobot = Bobot.query.filter_by(id_kelas=id_kelas, id_bank_soal=id_bank_soal, id_soal=id_soal).first()
+    b_turun = (3-bobot.b)/6
+    b_naik = (bobot.b+3)/6
+
+    a_turun = (3-bobot.a)/6
+    a_naik = (bobot.a+3)/6
+
+    rule_1 = min(b_turun, a_naik)
+    rule_2 = min(b_turun, a_turun)
+    rule_3 = min(b_naik, a_turun)
+    rule_4 = min(b_naik, a_naik)
+
+    z_1 = -((6*rule_1) - 3)
+    z_2 = -((6*rule_2) - 3)
+    z_3 = (6*rule_3) - 3
+    z_4 = (6*rule_4) - 3
+
+    z_akhir = ((rule_1 * z_1) + (rule_2 * z_2) + (rule_3 * z_3) + (rule_4 * z_4)) / (rule_1 + rule_2 + rule_3 + rule_4)
+
+    if (z_akhir < -1):
+        bobot = Bobot.query.filter_by(id_kelas=id_kelas, id_bank_soal=id_bank_soal, cluster=0)
+        bobot = many_bobot_schema.dump(bobot)
+        soal = Soal.query.get(bobot[index_mudah]['id_soal'])
+        result = custom_soal_schema.dump(soal)
+    elif (z_akhir > 1):
+        bobot = Bobot.query.filter_by(id_kelas=id_kelas, id_bank_soal=id_bank_soal, cluster=2)
+        bobot = many_bobot_schema.dump(bobot)
+        soal = Soal.query.get(bobot[index_susah]['id_soal'])    
+        result = custom_soal_schema.dump(soal)
+    else:
+        bobot = Bobot.query.filter_by(id_kelas=id_kelas, id_bank_soal=id_bank_soal, cluster=1)
+        bobot = many_bobot_schema.dump(bobot)
+        soal = Soal.query.get(bobot[index_sedang]['id_soal'])
+        result = custom_soal_schema.dump(soal)
+
+    return jsonify(result)
+
+
 # Get All Bobot by id_kelas id_soal id_bank_soal
 @app.route('/bobot/<id_kelas>/<id_bank_soal>', methods=['GET'])
 def get_all_bobot_custom(id_kelas, id_bank_soal):
@@ -1207,7 +1260,7 @@ def generate_bobot(id_kelas, id_bank_soal):
         b = jumlah_jawaban_benar / jumlah_siswa
 
         new_hasil_manual = Bobot.query.get(i['id'])
-        new_hasil_manual.b = b
+        new_hasil_manual.b = float("{:.2f}".format(b))
         db.session.commit()
 
     new_list = np.array(array_i)
@@ -1242,7 +1295,7 @@ def generate_bobot(id_kelas, id_bank_soal):
             x = (2*(b - a)) / c
 
         new_hasil_manual = Bobot.query.get(index)
-        new_hasil_manual.a = x
+        new_hasil_manual.a = float("{:.2f}".format(x.item(0)))
         db.session.commit()
         
         
@@ -1263,9 +1316,9 @@ def generate_bobot(id_kelas, id_bank_soal):
         id = row['id']
 
         new_hasil_manual = Bobot.query.get(id)
-        new_hasil_manual.l = l
-        new_hasil_manual.el = el
-        new_hasil_manual.p = p
+        new_hasil_manual.l = float("{:.2f}".format(l))
+        new_hasil_manual.el = float("{:.2f}".format(el))
+        new_hasil_manual.p = float("{:.2f}".format(p))
         db.session.commit()
 
 
@@ -1279,17 +1332,19 @@ def generate_bobot(id_kelas, id_bank_soal):
 @app.route('/cluster/<id_kelas>/<id_bank_soal>', methods=['PUT'])
 def cluster(id_kelas, id_bank_soal):
     bobot = Bobot.query.filter_by(
-        id_kelas=id_kelas, id_bank_soal=id_bank_soal)
+        id_kelas=id_kelas, id_bank_soal=id_bank_soal).order_by(Bobot.a)
     result = many_bobot_schema.dump(bobot)
 
     array = []
 
     for i in result:
-        array.append([i["a"], i["b"]])
+        array.append([i["id"], i["a"], i["b"]])
 
     np_array = np.array(array)
 
-    kmeans = KMeans(n_clusters=4, random_state=0).fit(np_array)
+    print(np_array)
+
+    kmeans = KMeans(n_clusters=3, random_state=0).fit(np_array)
 
     index = 0
 
