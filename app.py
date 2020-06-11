@@ -1128,45 +1128,57 @@ def get_first_soal(id_kelas, id_bank_soal):
     return jsonify(result)
 
 # Get Next Soal
-@app.route('/bobot/next-soal/<id_kelas>/<id_bank_soal>/<id_soal>/<status>/<int:index_mudah>/<int:index_sedang>/<int:index_susah>', methods=['GET'])
+@app.route('/bobot/next-soal/<id_kelas>/<id_bank_soal>/<id_soal>/<int:status>/<int:index_mudah>/<int:index_sedang>/<int:index_susah>', methods=['GET'])
 def get_next_soal(id_kelas, id_bank_soal, id_soal, status, index_mudah, index_sedang, index_susah):
     bobot = Bobot.query.filter_by(id_kelas=id_kelas, id_bank_soal=id_bank_soal, id_soal=id_soal).first()
-    b_turun = (3-bobot.b)/6
-    b_naik = (bobot.b+3)/6
+    z_akhir = -2
+    if (status == 0):
+        if (bobot.cluster == 0):
+            z_akhir = -2
+        elif (bobot. cluster == 1):
+            z_akhir = 0
+        else:
+            z_akhir = 2
+    else:
+        b_turun = (3-bobot.b)/6
+        b_naik = (bobot.b+3)/6
 
-    a_turun = (3-bobot.a)/6
-    a_naik = (bobot.a+3)/6
+        a_turun = (3-bobot.a)/6
+        a_naik = (bobot.a+3)/6
 
-    rule_1 = min(b_turun, a_naik)
-    rule_2 = min(b_turun, a_turun)
-    rule_3 = min(b_naik, a_turun)
-    rule_4 = min(b_naik, a_naik)
+        rule_1 = min(b_turun, a_naik)
+        rule_2 = min(b_turun, a_turun)
+        rule_3 = min(b_naik, a_turun)
+        rule_4 = min(b_naik, a_naik)
 
-    z_1 = -((6*rule_1) - 3)
-    z_2 = -((6*rule_2) - 3)
-    z_3 = (6*rule_3) - 3
-    z_4 = (6*rule_4) - 3
+        z_1 = -((6*rule_1) - 3)
+        z_2 = -((6*rule_2) - 3)
+        z_3 = (6*rule_3) - 3
+        z_4 = (6*rule_4) - 3
 
-    z_akhir = ((rule_1 * z_1) + (rule_2 * z_2) + (rule_3 * z_3) + (rule_4 * z_4)) / (rule_1 + rule_2 + rule_3 + rule_4)
+        z_akhir = ((rule_1 * z_1) + (rule_2 * z_2) + (rule_3 * z_3) + (rule_4 * z_4)) / (rule_1 + rule_2 + rule_3 + rule_4)
 
+    print(z_akhir)
     if (z_akhir < -1):
         bobot = Bobot.query.filter_by(id_kelas=id_kelas, id_bank_soal=id_bank_soal, cluster=0)
         bobot = many_bobot_schema.dump(bobot)
         soal = Soal.query.get(bobot[index_mudah]['id_soal'])
         result = custom_soal_schema.dump(soal)
+        result["jenis"] = 0
     elif (z_akhir > 1):
         bobot = Bobot.query.filter_by(id_kelas=id_kelas, id_bank_soal=id_bank_soal, cluster=2)
         bobot = many_bobot_schema.dump(bobot)
         soal = Soal.query.get(bobot[index_susah]['id_soal'])    
         result = custom_soal_schema.dump(soal)
+        result["jenis"] = 2
     else:
         bobot = Bobot.query.filter_by(id_kelas=id_kelas, id_bank_soal=id_bank_soal, cluster=1)
         bobot = many_bobot_schema.dump(bobot)
         soal = Soal.query.get(bobot[index_sedang]['id_soal'])
         result = custom_soal_schema.dump(soal)
+        result["jenis"] = 1
 
     return jsonify(result)
-
 
 # Get All Bobot by id_kelas id_soal id_bank_soal
 @app.route('/bobot/<id_kelas>/<id_bank_soal>', methods=['GET'])
