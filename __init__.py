@@ -1394,6 +1394,9 @@ def get_file_pilihan_soal():
 def testing():
     return "test"
 
+def getApp():
+    return app
+
 # Run Server
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
