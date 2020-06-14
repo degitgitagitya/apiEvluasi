@@ -1389,6 +1389,11 @@ def get_file_soal():
 def get_file_pilihan_soal():
 	return send_file('pilihansoal.csv', as_attachment=True)
 
+# Test
+@app.route('/test')
+def testing():
+    return "test"
+
 # Run Server
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=8000)
+    app.run(host='127.0.0.1')
