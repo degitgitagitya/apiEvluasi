@@ -1395,5 +1395,5 @@ def testing():
     return "test"
 
 # Run Server
-if __name__ == '__main__':
+def run_app():
     app.run(host='127.0.0.1')
