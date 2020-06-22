@@ -84,6 +84,14 @@ def get_all_siswa_by_kelas(id):
 
     return jsonify(result)
 
+# Get Siswa by ID
+@app.route('/siswa/id/<id>', methods=['GET'])
+def get_siswa_by_id(id):
+    siswa = Siswa.query.get(id)
+
+    return siswa_schema.jsonify(siswa)
+
+
 # Create a Siswa
 @app.route('/siswa', methods=['POST'])
 def add_siswa():
@@ -541,7 +549,7 @@ def get_ujian():
     return jsonify(result)
 
 # Get Active Ujian
-@app.route('/ujian/active/<id_kelas>')
+@app.route('/ujian/active/<id_kelas>', methods=['GET'])
 def get_active_ujian(id_kelas):
     ujian = Ujian.query.filter_by(id_kelas=id_kelas, status=1).first()
 
@@ -553,6 +561,15 @@ def get_one_ujian(id):
     ujian = Ujian.query.get(id)
 
     return ujian_schema.jsonify(ujian)
+
+# Get ujian by id_kelas
+@app.route('/ujian/kelas/<id_kelas>', methods=['GET'])
+def get_ujian_by_kelas(id_kelas):
+    ujian = Ujian.query.filter_by(id_kelas=id_kelas)
+    result = many_ujian_schema.dump(ujian)
+
+    return jsonify(result)
+
 
 # Create a Ujian
 @app.route('/ujian', methods=['POST'])
