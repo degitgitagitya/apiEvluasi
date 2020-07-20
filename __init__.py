@@ -1175,7 +1175,6 @@ def get_next_soal(id_kelas, id_bank_soal, id_soal, status, index_mudah, index_se
 
         z_akhir = ((rule_1 * z_1) + (rule_2 * z_2) + (rule_3 * z_3) + (rule_4 * z_4)) / (rule_1 + rule_2 + rule_3 + rule_4)
 
-    print(z_akhir)
     if (z_akhir < -1):
         bobot = Bobot.query.filter_by(id_kelas=id_kelas, id_bank_soal=id_bank_soal, cluster=0)
         bobot = many_bobot_schema.dump(bobot)
@@ -1371,8 +1370,6 @@ def cluster(id_kelas, id_bank_soal):
 
     np_array = np.array(array)
 
-    print(np_array)
-
     kmeans = KMeans(n_clusters=3, random_state=0).fit(np_array)
 
     index = 0
@@ -1417,4 +1414,5 @@ def getApp():
 # Run Server
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    # app.run(host='0.0.0.0', port=port)
+    app.run(debug=True)
