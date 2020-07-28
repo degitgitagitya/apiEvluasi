@@ -1151,11 +1151,11 @@ def get_next_soal(id_kelas, id_bank_soal, id_soal, status, index_mudah, index_se
     z_akhir = -2
     if (status == 0):
         if (bobot.cluster == 0):
-            z_akhir = -2
+            z_akhir = 0
         elif (bobot. cluster == 1):
             z_akhir = 0
         else:
-            z_akhir = 2
+            z_akhir = 0.2
     else:
         b_turun = (3-bobot.b)/6
         b_naik = (bobot.b+3)/6
@@ -1175,13 +1175,15 @@ def get_next_soal(id_kelas, id_bank_soal, id_soal, status, index_mudah, index_se
 
         z_akhir = ((rule_1 * z_1) + (rule_2 * z_2) + (rule_3 * z_3) + (rule_4 * z_4)) / (rule_1 + rule_2 + rule_3 + rule_4)
 
-    if (z_akhir < -1):
+        print(z_akhir)
+
+    if (z_akhir < 0.1):
         bobot = Bobot.query.filter_by(id_kelas=id_kelas, id_bank_soal=id_bank_soal, cluster=0)
         bobot = many_bobot_schema.dump(bobot)
         soal = Soal.query.get(bobot[index_mudah]['id_soal'])
         result = custom_soal_schema.dump(soal)
         result["jenis"] = 0
-    elif (z_akhir > 1):
+    elif (z_akhir > 0.3):
         bobot = Bobot.query.filter_by(id_kelas=id_kelas, id_bank_soal=id_bank_soal, cluster=2)
         bobot = many_bobot_schema.dump(bobot)
         soal = Soal.query.get(bobot[index_susah]['id_soal'])    
@@ -1261,6 +1263,7 @@ def generate_bobot(id_kelas, id_bank_soal):
     array_j = []
     index_id_soal = []
 
+    total_siswa = 0
    
 
     for i in result:
@@ -1286,6 +1289,7 @@ def generate_bobot(id_kelas, id_bank_soal):
         array_i.append(array_j)
 
         b = jumlah_jawaban_benar / jumlah_siswa
+        total_siswa = jumlah_siswa
 
         new_hasil_manual = Bobot.query.get(i['id'])
         new_hasil_manual.b = float("{:.2f}".format(b))
@@ -1299,16 +1303,18 @@ def generate_bobot(id_kelas, id_bank_soal):
     new_df = new_df.sort_values(by=['Total'])
 
     jumlah_soal = len(new_df)
-    jumlah_per_kelompok = jumlah_soal // 3
+    jumlah_per_kelompok = round(total_siswa * 0.27)
 
     kelompok_awal = new_df[:jumlah_per_kelompok]
-    kelompok_akhir = new_df[jumlah_per_kelompok*2+1: - 1]
+    kelompok_akhir = new_df[jumlah_soal-jumlah_per_kelompok - 1: - 1]
     jumlah = new_df[-1:]
-    
 
     kelompok_awal_sum = pd.DataFrame(data=kelompok_awal.sum(axis=0))
     kelompok_akhir_sum = pd.DataFrame(data=kelompok_akhir.sum(axis=0))
     jumlah = jumlah.T
+
+    jumlah_kelompok_awal = kelompok_awal.shape[0]
+    jumlah_kelompok_akhir = kelompok_akhir.shape[0]
 
     kelompok_awal_sum = kelompok_awal_sum.drop(['Total'])
 
@@ -1316,14 +1322,14 @@ def generate_bobot(id_kelas, id_bank_soal):
     for index, row in kelompok_awal_sum.iterrows():
         a = kelompok_akhir_sum.loc[ index , : ].values
         b = row.values
-        c = jumlah.loc[index, :].values
-        if (c == 0):
-            x = 0
-        else:
-            x = (2*(b - a)) / c
+
+        b = b / jumlah_kelompok_awal
+        a = a / jumlah_kelompok_akhir
+        dp = a - b
+
 
         new_hasil_manual = Bobot.query.get(index)
-        new_hasil_manual.a = float("{:.2f}".format(x.item(0)))
+        new_hasil_manual.a = float("{:.2f}".format(dp.item(0)))
         db.session.commit()
         
         
@@ -1356,6 +1362,7 @@ def generate_bobot(id_kelas, id_bank_soal):
     
     return (jsonify(result))
 
+
 # Cluster
 @app.route('/cluster/<id_kelas>/<id_bank_soal>', methods=['PUT'])
 def cluster(id_kelas, id_bank_soal):
@@ -1366,7 +1373,7 @@ def cluster(id_kelas, id_bank_soal):
     array = []
 
     for i in result:
-        array.append([i["id"], i["a"], i["b"]])
+        array.append([i["a"], i["b"]])
 
     np_array = np.array(array)
 
