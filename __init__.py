@@ -1175,8 +1175,6 @@ def get_next_soal(id_kelas, id_bank_soal, id_soal, status, index_mudah, index_se
 
         z_akhir = ((rule_1 * z_1) + (rule_2 * z_2) + (rule_3 * z_3) + (rule_4 * z_4)) / (rule_1 + rule_2 + rule_3 + rule_4)
 
-        print(z_akhir)
-
     if (z_akhir < 0.1):
         bobot = Bobot.query.filter_by(id_kelas=id_kelas, id_bank_soal=id_bank_soal, cluster=0)
         bobot = many_bobot_schema.dump(bobot)
