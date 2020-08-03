@@ -1408,16 +1408,19 @@ def get_file_soal():
 def get_file_pilihan_soal():
 	return send_file('pilihansoal.csv', as_attachment=True)
 
-# Test
-@app.route('/test')
-def testing():
-    return "test"
+# Get All Siswa
+@app.route('/testing', methods=['GET'])
+def test():
+    all_siswa = Siswa.query.all()
+    result = siswas_schema.dump(all_siswa)
+
+    return jsonify(result)
 
 def getApp():
     return app
 
 # Run Server
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
-    # app.run(debug=True)
+    port = int(os.environ.get("PORT", 8000))
+    # app.run(host='0.0.0.0', port=port)
+    app.run(debug=True, port=port)
